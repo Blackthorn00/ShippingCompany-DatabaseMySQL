@@ -1,0 +1,109 @@
+1) Πόσοι προιστάμενοι είναι άνω των 35 ετών
+
+-- Επιστρέφει σκέτο αριθμό
+select count(*) as 'Number of employees older than 35'
+from supervisor
+join employee on supervisor.superv_emp_id=employee.emp_id
+where supervisor.superv_end_date is NULL AND timestampdiff(YEAR, employee.emp_birth_date, curdate()) > 35;
+
+
+-- Επιστρέφει τους προϊσταμένους
+select employee.emp_id, employee.emp_name, employee.emp_surname, employee.emp_birth_date
+from employee
+join supervisor on supervisor.superv_emp_id=employee.emp_id
+where supervisor.superv_end_date is NULL AND timestampdiff(YEAR, employee.emp_birth_date, curdate()) > 35;
+
+
+
+
+2) Πόσα πλοία έχουν ηλικία μεγαλύτερη των 15 ετών;
+-- Επιστρέφει σκέτο αριθμό
+select count(*) as 'Number of ships older than 15 years'
+from ship
+where timestampdiff(YEAR, ship.ship_const_date, curdate()) > 15;
+
+-- Επιστρέφει τα πλοία
+select ship.ship_imo, ship.ship_name, ship.ship_const_date
+from ship
+where timestampdiff(YEAR, ship.ship_const_date, curdate()) > 15;
+
+
+
+3) Πόσοι καπετάνιοι μένουν στην ίδια πόλη;
+
+--Επιστρέφει σκέτο αριθμό και το όνομα της πόλης
+select count(*) as 'Number of Captains', employee.emp_addr_city 
+from employee
+join ship_crew on employee.emp_id=ship_crew.crew_emp_id
+join duty on ship_crew.crew_duty_duty_id=duty.duty_id
+where duty.duty_id=1
+group by employee.emp_addr_city
+having count(*) > 1
+order by count(*) desc;
+
+-- Επιστρέφει τους Καπετάνιους
+select employee.emp_id, employee.emp_name, employee.emp_surname, employee.emp_addr_city
+from employee
+join employment on employee.emp_id=employment.empl_emp_id
+join ship_crew on employee.emp_id=ship_crew.crew_emp_id
+where ship_crew.crew_duty_duty_id=1 and employment.empl_end_date is null
+order by employee.emp_addr_city;
+
+
+4) Ποιος Α’ Μηχανικός έχει τύχει τις περισσότερες βλάβες επιπέδου 1;
+
+select employee.emp_id, employee.emp_name, employee.emp_surname, count(damage.dmg_id) as 'Number of Level 1 damages'
+from employee
+join ship_crew on employee.emp_id=ship_crew.crew_emp_id
+join duty on ship_crew.crew_duty_duty_id=duty.duty_id
+join voyage_participation on ship_crew.crew_id=voyage_participation.voyprt_crew_id
+join ship_voyages on voyage_participation.voyprt_shipvoy_id=ship_voyages.shipvoy_id
+join damage on ship_voyages.shipvoy_ship_imo=damage.dmg_ship_imo
+where (duty.duty_id=4 ) AND damage.dmg_dmgsvr_id=1
+group by employee.emp_id
+order by count(damage.dmg_id) desc
+limit 1;
+
+
+
+5) Ποιοι καπετάνιοι έχουν διαβατήριο που θα λήξει το επόμενο 6μηνο;
+
+select employee.emp_id, employee.emp_name, employee.emp_surname
+from employee
+join ship_crew on employee.emp_id=ship_crew.crew_emp_id
+where ship_crew.crew_duty_duty_id=1
+and (ship_crew.crew_passpoort_exp_date between curdate() and date_add(curdate(), interval 6 month))
+order by employee.emp_id;
+
+
+
+6) Ποιος εργαζόμενος έχει τα περισσότερα τέκνα;
+
+select employee.emp_id, employee.emp_name, employee.emp_surname, count(family_member.fammember_id) as 'Number of Kids'
+from employee
+join family_member on employee.emp_id=family_member.fammember_emp_id
+where family_member.fammember_fammembertype_id in (1, 3)
+group by employee.emp_id
+order by count(family_member.fammember_id) desc;
+
+
+
+7) Ποιος εργαζόμενος έχει αλλάξει τα περισσότερα τμήματα;
+
+select employee.emp_id, employee.emp_name, employee.emp_surname, count(employment.empl_dpt_id) as 'Department Changes'
+from employee
+join employment on employee.emp_id=employment.empl_emp_id
+group by employee.emp_id
+order by count(employment.empl_dpt_id) desc;
+
+
+
+8) Ποιο πλοίο έχει τις περισσότερες καθυστερήσεις;
+
+select ship.ship_imo, ship.ship_name, count(ship_voyages.shipvoy_id) as 'Number of delays'
+from ship
+join ship_voyages on ship.ship_imo=ship_voyages.shipvoy_ship_imo
+where ship_voyages.shipvoy_ATA > ship_voyages.shipvoy_ETA
+or ship_voyages.shipvoy_ATD > ship_voyages.shipvoy_ETD
+group by ship.ship_imo
+order by count(ship_voyages.shipvoy_id) desc;
